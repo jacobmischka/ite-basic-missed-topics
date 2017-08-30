@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7dc497487ad871869e253d5d221bb435194a4cb430158dcc484ba22cd52bebaf"
+            "sha256": "3057a5b315711a267568843d9d908b208291f15ccfeb7d2f6f44df3e141c224f"
         },
         "requires": {},
         "sources": [
@@ -14,6 +14,15 @@
     "default": {
         "chardet": {
             "version": "==3.0.4"
+        },
+        "et-xmlfile": {
+            "version": "==1.0.1"
+        },
+        "jdcal": {
+            "version": "==1.3"
+        },
+        "openpyxl": {
+            "version": "==2.4.8"
         },
         "pdfminer.six": {
             "version": "==20170720"

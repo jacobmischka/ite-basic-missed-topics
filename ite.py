@@ -1,12 +1,34 @@
 #!/usr/bin/env python3
 
 from openpyxl import Workbook
+from openpyxl.styles import NamedStyle, Font, PatternFill, Alignment
+from openpyxl.formatting.rule import CellIsRule
+from openpyxl.utils.cell import get_column_letter
+
 import csv, sys
 
-# FIXME
-ORIGINAL_DATA_COL_RANGE = ('C', 'J')
-DIFF_COL_RANGE = ('L', 'O')
-MISSED_COL_RANGE = ('Q', 'T')
+from ite_section import IteSection, IteItem
+from utils import get_data_ranges, get_range, get_range_list, get_ranges
+
+DIFF_GREAT_CELL = 'D1'
+DIFF_GOOD_CELL = 'G1'
+DIFF_BAD_CELL = 'J1'
+DIFF_VERY_BAD_CELL = 'M1'
+
+MISSED_GOOD_CELL = 'D2'
+MISSED_WARNING_CELL = 'G2'
+MISSED_BAD_CELL = 'J2'
+
+DIFF_GREAT = 0.2
+DIFF_GOOD = 0
+DIFF_BAD = -0.1
+DIFF_VERY_BAD = -0.2
+
+MISSED_GOOD = 0.25
+MISSED_WARNING = 0.5
+MISSED_BAD = 0.75
+
+DATA_START_ROW = 5
 
 def extract(inpath):
 	rows = []
@@ -99,24 +121,6 @@ def extract_sections(rows):
 
 	return sections
 
-def parse_percentage(text):
-	return float(text[:-1]) / 100
-
-def format_percentage(num):
-	return '{}%'.format(num * 100)
-
-def get_xlsx_rows(sections):
-	# TODO: Averages
-	rows = []
-
-	for section in sections:
-		rows += section.get_xlsx_rows()
-		rows.append([])
-
-	rows.append([])
-
-	return rows
-
 def get_csv_rows(sections):
 	rows = []
 	items = []
@@ -206,13 +210,408 @@ def dump_section_csv(sections, outpath):
 		writer = csv.writer(outfile)
 		writer.writerows(get_csv_rows(sections))
 
+def write_xlsx_legend(worksheet):
+	worksheet[DIFF_GREAT_CELL].value = DIFF_GREAT
+	worksheet[DIFF_GREAT_CELL].offset(column=-1).value = 'Diff great'
+
+	worksheet[DIFF_GOOD_CELL].value = DIFF_GOOD
+	worksheet[DIFF_GOOD_CELL].offset(column=-1).value = 'Diff good'
+
+	worksheet[DIFF_BAD_CELL].value = DIFF_BAD
+	worksheet[DIFF_BAD_CELL].offset(column=-1).value = 'Diff bad'
+
+	worksheet[DIFF_VERY_BAD_CELL].value = DIFF_VERY_BAD
+	worksheet[DIFF_VERY_BAD_CELL].offset(column=-1).value = 'Diff very bad'
+
+	worksheet[MISSED_GOOD_CELL].value = MISSED_GOOD
+	worksheet[MISSED_GOOD_CELL].offset(column=-1).value = 'Missed good'
+
+	worksheet[MISSED_WARNING_CELL].value = MISSED_WARNING
+	worksheet[MISSED_WARNING_CELL].offset(column=-1).value = 'Missed warning'
+
+	worksheet[MISSED_BAD_CELL].value = MISSED_BAD
+	worksheet[MISSED_BAD_CELL].offset(column=-1).value = 'Missed bad'
+
+
 def dump_section_xlsx(sections, outpath):
-	wb = Workbook(write_only=True)
-	ws = wb.create_sheet()
-	for row in get_xlsx_rows(sections):
-		ws.append(row)
+	wb = Workbook()
+	ws = wb.active
+
+	write_xlsx_legend(ws)
+
+	row = DATA_START_ROW
+	row_ranges = []
+
+	ws.cell(row=row, column=IteItem.CBY_TOTAL_COL, value='Original Data')
+	ws.merge_cells(start_row=row, end_row=row, start_column=IteItem.CBY_TOTAL_COL, end_column=IteItem.CA3_COL)
+	ws.cell(row=row, column=IteItem.CBY_DIFF_COL, value='Difference from National Mean')
+	ws.merge_cells(start_row=row, end_row=row, start_column=IteItem.CBY_DIFF_COL, end_column=IteItem.CA3_DIFF_COL)
+	ws.cell(row=row, column=IteItem.CBY_MISSED_COL, value='% Missed')
+	ws.merge_cells(start_row=row, end_row=row, start_column=IteItem.CBY_MISSED_COL, end_column=IteItem.CA3_MISSED_COL)
+	ws.cell(row=row, column=IteItem.CBY_DIFFICIENT_COL, value='Difficient Area')
+	ws.merge_cells(start_row=row, end_row=row, start_column=IteItem.CBY_DIFFICIENT_COL, end_column=IteItem.CA3_DIFFICIENT_COL)
+
+	for section in sections:
+		end_row = section.write_xlsx_rows(ws, row + 1)
+		row_ranges.append((row, end_row))
+		row = end_row
+
+	data_ranges = get_data_ranges(row_ranges)
+	IteSection.write_xlsx_headings(ws, row + 1)
+	write_xlsx_summary(ws, data_ranges, row + 2)
+	add_conditional_formatting(ws, data_ranges)
+	add_styles(ws, data_ranges)
 
 	wb.save(outpath)
+
+def add_styles(worksheet, data_ranges):
+	subheading = NamedStyle(name='subheading')
+	subheading.font = Font(name='Calibri', size=11)
+	subheading.fill = PatternFill(start_color='333333', end_color='333333', fill_type='solid')
+	subheading.number_format = '0%'
+
+	for range_start, _ in data_ranges:
+		for row in worksheet['{}{}:{}{}'.format(
+			get_column_letter(IteItem.KEYWORD_COL),
+			range_start - 2,
+			get_column_letter(IteItem.CA3_DIFFICIENT_COL),
+			range_start - 1
+		)]:
+			for cell in row:
+				cell.style = subheading
+
+	# summary subheadings
+	for row in worksheet['{}{}:{}{}'.format(
+		get_column_letter(IteItem.KEYWORD_COL),
+		data_ranges[-1][1] + 1,
+		get_column_letter(IteItem.CA3_DIFFICIENT_COL),
+		data_ranges[-1][1] + 2
+	)]:
+		for cell in row:
+			cell.style = subheading
+
+	# vertical separators
+	for col in IteItem.SEPARATOR_COLS + [IteItem.A_OR_B_COL]:
+		for row in worksheet.iter_rows(min_row=DATA_START_ROW):
+			row[col - 1].style = subheading
+
+	heading = NamedStyle(name='heading')
+	heading.font = Font(name='Calibri', size=11, bold=True)
+	heading.alignment = Alignment(horizontal='center')
+
+	worksheet.cell(row=DATA_START_ROW, column=IteItem.CBY_TOTAL_COL).style = heading
+	worksheet.cell(row=DATA_START_ROW, column=IteItem.CBY_DIFF_COL).style = heading
+	worksheet.cell(row=DATA_START_ROW, column=IteItem.CBY_MISSED_COL).style = heading
+	worksheet.cell(row=DATA_START_ROW, column=IteItem.CBY_DIFFICIENT_COL).style = heading
+
+	column_ranges = [
+		(IteItem.CBY_TOTAL_COL, IteItem.CA3_COL),
+		(IteItem.CBY_DIFF_COL, IteItem.CA3_DIFF_COL),
+		(IteItem.CBY_MISSED_COL, IteItem.CA3_MISSED_COL)
+	]
+
+	data_ranges.append([
+		(data_ranges[-1][1] + 3),
+		(data_ranges[-1][1] + 5)
+	])
+
+	for start_col, end_col in column_ranges:
+		for start_row, end_row in data_ranges:
+			for row in worksheet['{}{}:{}{}'.format(
+				get_column_letter(start_col),
+				start_row,
+				get_column_letter(end_col),
+				end_row
+			)]:
+				for cell in row:
+					cell.style = 'Percent'
+
+	for cell in [
+		DIFF_GREAT_CELL,
+		DIFF_GOOD_CELL,
+		DIFF_BAD_CELL,
+		DIFF_VERY_BAD_CELL,
+		MISSED_GOOD_CELL,
+		MISSED_WARNING_CELL,
+		MISSED_BAD_CELL
+	]:
+		worksheet[cell].style = 'Percent'
+
+def add_conditional_formatting(worksheet, data_ranges):
+	original_range = get_ranges(IteItem.CBY_TOTAL_COL, data_ranges,
+		end_col=IteItem.CA3_COL, separator=' ')
+	diff_range = get_ranges(IteItem.CBY_DIFF_COL, data_ranges,
+		end_col=IteItem.CA3_DIFF_COL, separator=' ')
+	missed_range = get_ranges(IteItem.CBY_MISSED_COL, data_ranges,
+		end_col=IteItem.CA3_MISSED_COL, separator=' ')
+
+	dark_red_fill = PatternFill(start_color='ff0000', end_color='ff0000', fill_type='solid')
+	light_red_fill = PatternFill(start_color='ff7d7d', end_color='ff7d7d', fill_type='solid')
+	yellow_fill = PatternFill(start_color='ffff00', end_color='ffff00', fill_type='solid')
+	green_fill = PatternFill(start_color='55ff55', end_color='55ff55', fill_type='solid')
+	blue_fill = PatternFill(start_color='00c2ff', end_color='00c2ff', fill_type='solid')
+
+	worksheet.conditional_formatting.add(diff_range,
+		CellIsRule(operator='between', formula=[DIFF_GREAT, '1'], fill=blue_fill))
+	worksheet.conditional_formatting.add(diff_range,
+		CellIsRule(operator='between', formula=[DIFF_GOOD, DIFF_GREAT], fill=green_fill))
+	worksheet.conditional_formatting.add(diff_range,
+		CellIsRule(operator='between', formula=[DIFF_BAD, DIFF_GOOD], fill=yellow_fill))
+	worksheet.conditional_formatting.add(diff_range,
+		CellIsRule(operator='between', formula=[DIFF_VERY_BAD, DIFF_BAD], fill=light_red_fill))
+	worksheet.conditional_formatting.add(diff_range,
+		CellIsRule(operator='between', formula=['-1', DIFF_VERY_BAD], fill=dark_red_fill))
+
+
+	worksheet.conditional_formatting.add(missed_range,
+		CellIsRule(operator='between', formula=['0', MISSED_GOOD], fill=green_fill))
+	worksheet.conditional_formatting.add(missed_range,
+		CellIsRule(operator='between', formula=[MISSED_GOOD, MISSED_WARNING], fill=yellow_fill))
+	worksheet.conditional_formatting.add(missed_range,
+		CellIsRule(operator='between', formula=[MISSED_WARNING, MISSED_BAD], fill=light_red_fill))
+	worksheet.conditional_formatting.add(missed_range,
+		CellIsRule(operator='between', formula=[MISSED_BAD, '1'], fill=dark_red_fill))
+
+def write_xlsx_summary(worksheet, data_ranges, row):
+	OVERALL_ROW = row
+	ADVANCED_ROW = row + 1
+	BASIC_ROW = row + 2
+
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.KEYWORD_COL, value='Overall average')
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CBY_TOTAL_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CBY_TOTAL_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CBY_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CBY_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA1_TOTAL_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA1_TOTAL_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA1_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA1_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA2_TOTAL_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA2_TOTAL_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA2_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA2_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA3_TOTAL_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA3_TOTAL_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA3_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA3_COL, data_ranges)))
+
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CBY_DIFF_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CBY_DIFF_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA1_DIFF_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA1_DIFF_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA2_DIFF_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA2_DIFF_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA3_DIFF_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA3_DIFF_COL, data_ranges)))
+
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CBY_MISSED_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CBY_MISSED_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA1_MISSED_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA1_MISSED_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA2_MISSED_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA2_MISSED_COL, data_ranges)))
+	worksheet.cell(row=OVERALL_ROW, column=IteItem.CA3_MISSED_COL,
+		value='=AVERAGE({})'.format(get_ranges(IteItem.CA3_MISSED_COL, data_ranges)))
+
+	worksheet.cell(row=ADVANCED_ROW, column=1, value='Advanced question average')
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CBY_TOTAL_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CBY_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA1_TOTAL_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA1_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA2_TOTAL_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA2_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA3_TOTAL_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA3_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CBY_DIFF_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA1_DIFF_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA2_DIFF_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA3_DIFF_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CBY_MISSED_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA1_MISSED_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA2_MISSED_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=ADVANCED_ROW, column=IteItem.CA3_MISSED_COL,
+		value='=AVERAGEIF({},"=A",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+
+	worksheet.cell(row=BASIC_ROW, column=1, value='Advanced question average')
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CBY_TOTAL_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CBY_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA1_TOTAL_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA1_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA2_TOTAL_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA2_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA3_TOTAL_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_TOTAL_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA3_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CBY_DIFF_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA1_DIFF_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA2_DIFF_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA3_DIFF_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_DIFF_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CBY_MISSED_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CBY_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA1_MISSED_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA1_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA2_MISSED_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA2_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
+	worksheet.cell(row=BASIC_ROW, column=IteItem.CA3_MISSED_COL,
+		value='=AVERAGEIF({},"=B",{})'.format(
+			get_range(IteItem.A_OR_B_COL, data_ranges[0][0], data_ranges[-1][-1], absolute_col=True),
+			get_range(IteItem.CA3_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
+		)
+	)
 
 def main():
 	labels, body = extract('/home/mischka/Downloads/ite and basic stuff/ITE_ProgramItem_156002.txt')
@@ -222,173 +621,6 @@ def main():
 	dump_section_csv(sections, './output/2017-ite-sections.csv')
 	dump_section_xlsx(sections, './output/2017-ite-sections.xlsx')
 
-
-class IteSection(object):
-	HEADINGS = [
-		'',
-		'% total CBY',
-		'% our CBY',
-		'% total CA-1',
-		'% our CA-1',
-		'% total CA-2',
-		'% our CA-2',
-		'% total CA-3',
-		'% our CA-3',
-		'',
-		'CBY',
-		'CA-1',
-		'CA-2',
-		'CA-3',
-		'',
-		'CBY',
-		'CA-1',
-		'CA-2',
-		'CA-3'
-	]
-
-	def __init__(self, heading, subheading, items):
-		self.heading = heading
-		self.subheading = subheading
-		self.items = [IteItem(item) for item in items]
-
-
-	def get_csv_rows(self):
-		return [
-			[
-				self.heading,
-				*self.HEADINGS
-			],
-			*[item.get_csv_row() for item in self.items]
-		]
-
-	def get_xlsx_rows(self):
-		return [
-			[
-				self.heading,
-				*self.HEADINGS
-			],
-			*[item.get_xlsx_row() for item in self.items]
-		]
-
-	def __repr__(self):
-		return 'IteSection(heading={}, subheading={}, items={})'.format(
-			self.heading,
-			self.subheading,
-			self.items
-		)
-
-class IteItem(object):
-
-	def __init__(self, row):
-		self.keyword = row[0]
-		(
-			self.ca3_total,
-			self.ca3,
-			self.ca2_total,
-			self.ca2,
-			self.ca1_total,
-			self.ca1,
-			self.cby_total,
-			self.cby
-		) = [parse_percentage(cell) for cell in row[1:]]
-
-		self.item_type = 'A' if '(A)' in self.keyword else 'B'
-
-	@property
-	def cby_diff(self):
-		return self.cby - self.cby_total
-
-	@property
-	def ca1_diff(self):
-		return self.ca1 - self.ca1_total
-
-	@property
-	def ca2_diff(self):
-		return self.ca2 - self.ca2_total
-
-	@property
-	def ca3_diff(self):
-		return self.ca3 - self.ca3_total
-
-	@property
-	def cby_missed(self):
-		return 1 - self.cby
-
-	@property
-	def ca1_missed(self):
-		return 1 - self.ca1
-
-	@property
-	def ca2_missed(self):
-		return 1 - self.ca2
-
-	@property
-	def ca3_missed(self):
-		return 1 - self.ca3
-
-	def get_csv_row(self):
-		return [
-			self.keyword,
-			'',
-			self.cby_total,
-			self.cby,
-			self.ca1_total,
-			self.ca1,
-			self.ca2_total,
-			self.ca2,
-			self.ca3_total,
-			self.ca3,
-			'',
-			self.cby_diff,
-			self.ca1_diff,
-			self.ca2_diff,
-			self.ca3_diff,
-			'',
-			self.cby_missed,
-			self.ca1_missed,
-			self.ca2_missed,
-			self.ca3_missed
-		]
-
-	def get_xlsx_row(self):
-		return [
-			self.keyword,
-			'',
-			self.cby_total,
-			self.cby,
-			self.ca1_total,
-			self.ca1,
-			self.ca2_total,
-			self.ca2,
-			self.ca3_total,
-			self.ca3,
-			'',
-			'=(RC[-8] - RC[-9])',
-			'=(RC[-7] - RC[-8])',
-			'=(RC[-6] - RC[-7])',
-			'=(RC[-5] - RC[-6])',
-			'',
-			'=(1 - R[0]C[-13])',
-			'=(1 - R[0]C[-12])',
-			'=(1 - R[0]C[-11])',
-			'=(1 - R[0]C[-10])'
-		]
-
-	def __repr__(self):
-		return (
-			'IteItem(keyword={}, ca3_total={}, ca3={}, ca2_total={}, ca2={}, '
-			'ca1_total={}, ca1={}, cby_total={}, cby={})'
-		).format(
-			self.keyword,
-			self.ca3_total,
-			self.ca3,
-			self.ca2_total,
-			self.ca2,
-			self.ca1_total,
-			self.ca1,
-			self.cby_total,
-			self.cby
-		)
 
 if __name__ == '__main__':
 	main()
