@@ -4,6 +4,7 @@ verify_ssl = true
 
 [packages]
 "pdfminer.six" = "*"
+openpyxl = "*"
 
 [dev-packages]
 pylint = "*"
