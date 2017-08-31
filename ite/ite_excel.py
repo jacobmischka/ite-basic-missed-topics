@@ -32,30 +32,38 @@ from constants import (
 	DIFFICIENT_DIFFERENCE_MISSED,
 	DIFFICIENT_MISSED,
 
-	DATA_START_ROW
+	DATA_START_ROW,
+
+	dark_red_fill,
+	light_red_fill,
+	yellow_fill,
+	green_fill,
+	blue_fill
 )
 
 def write_xlsx_legend(worksheet):
 	worksheet[DIFF_GREAT_CELL].value = DIFF_GREAT
-	worksheet[DIFF_GREAT_CELL].offset(column=-1).value = 'Diff great'
+	worksheet[DIFF_GREAT_CELL].offset(column=-1).value = 'Diff great >='
 
 	worksheet[DIFF_GOOD_CELL].value = DIFF_GOOD
-	worksheet[DIFF_GOOD_CELL].offset(column=-1).value = 'Diff good'
+	worksheet[DIFF_GOOD_CELL].offset(column=-1).value = 'Diff good >='
+	worksheet[DIFF_GOOD_CELL].offset(column=2).value = 'Diff warning'
 
 	worksheet[DIFF_BAD_CELL].value = DIFF_BAD
-	worksheet[DIFF_BAD_CELL].offset(column=-1).value = 'Diff bad'
+	worksheet[DIFF_BAD_CELL].offset(column=-1).value = 'Diff bad <='
 
 	worksheet[DIFF_VERY_BAD_CELL].value = DIFF_VERY_BAD
-	worksheet[DIFF_VERY_BAD_CELL].offset(column=-1).value = 'Diff very bad'
+	worksheet[DIFF_VERY_BAD_CELL].offset(column=-1).value = 'Diff very bad <='
 
 	worksheet[MISSED_GOOD_CELL].value = MISSED_GOOD
-	worksheet[MISSED_GOOD_CELL].offset(column=-1).value = 'Missed good'
+	worksheet[MISSED_GOOD_CELL].offset(column=-1).value = 'Missed good <='
 
 	worksheet[MISSED_WARNING_CELL].value = MISSED_WARNING
-	worksheet[MISSED_WARNING_CELL].offset(column=-1).value = 'Missed warning'
+	worksheet[MISSED_WARNING_CELL].offset(column=-1).value = 'Missed warning <='
 
 	worksheet[MISSED_BAD_CELL].value = MISSED_BAD
-	worksheet[MISSED_BAD_CELL].offset(column=-1).value = 'Missed bad'
+	worksheet[MISSED_BAD_CELL].offset(column=-1).value = 'Missed bad <='
+	worksheet[MISSED_BAD_CELL].offset(column=2).value = 'Missed very bad'
 
 	worksheet[DIFFICIENT_DIFFERENCE_COL].offset(column=-2).value = 'Difficient if'
 	worksheet[DIFFICIENT_DIFFERENCE_COL].offset(column=-1).value = 'National mean difference greater than'
@@ -103,8 +111,9 @@ def dump_section_xlsx(sections, outpath):
 
 def add_styles(worksheet, data_ranges):
 	subheading = NamedStyle(name='subheading')
-	subheading.font = Font(name='Calibri', size=11)
-	subheading.fill = PatternFill(start_color='333333', end_color='333333', fill_type='solid')
+	subheading.font = Font(name='Calibri', size=11, color='ffffff')
+	subheading.fill = PatternFill(start_color='444444', end_color='444444',
+		fill_type='solid')
 	subheading.number_format = '0%'
 
 	for range_start, _ in data_ranges:
@@ -177,17 +186,22 @@ def add_styles(worksheet, data_ranges):
 	]:
 		worksheet[cell].style = 'Percent'
 
+	worksheet[DIFF_GREAT_CELL].offset(column=-1).fill = blue_fill
+	worksheet[DIFF_GOOD_CELL].offset(column=-1).fill = green_fill
+	worksheet[DIFF_GOOD_CELL].offset(column=2).fill = yellow_fill
+	worksheet[DIFF_BAD_CELL].offset(column=-1).fill = light_red_fill
+	worksheet[DIFF_VERY_BAD_CELL].offset(column=-1).fill = dark_red_fill
+
+	worksheet[MISSED_GOOD_CELL].offset(column=-1).fill = green_fill
+	worksheet[MISSED_WARNING_CELL].offset(column=-1).fill = yellow_fill
+	worksheet[MISSED_BAD_CELL].offset(column=-1).fill = light_red_fill
+	worksheet[MISSED_BAD_CELL].offset(column=2).fill = dark_red_fill
+
 def add_conditional_formatting(worksheet, data_ranges):
 	diff_range = get_ranges(IteItem.CBY_DIFF_COL, data_ranges,
 		end_col=IteItem.CA3_DIFF_COL, separator=' ')
 	missed_range = get_ranges(IteItem.CBY_MISSED_COL, data_ranges,
 		end_col=IteItem.CA3_MISSED_COL, separator=' ')
-
-	dark_red_fill = PatternFill(start_color='ff0000', end_color='ff0000', fill_type='solid')
-	light_red_fill = PatternFill(start_color='ff7d7d', end_color='ff7d7d', fill_type='solid')
-	yellow_fill = PatternFill(start_color='ffff00', end_color='ffff00', fill_type='solid')
-	green_fill = PatternFill(start_color='55ff55', end_color='55ff55', fill_type='solid')
-	blue_fill = PatternFill(start_color='00c2ff', end_color='00c2ff', fill_type='solid')
 
 	worksheet.conditional_formatting.add(diff_range,
 		CellIsRule(operator='between', formula=[DIFF_GREAT_CELL, '1'], fill=blue_fill))

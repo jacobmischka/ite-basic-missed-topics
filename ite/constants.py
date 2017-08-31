@@ -1,7 +1,9 @@
+from openpyxl.styles import PatternFill
+
 DIFF_GREAT_CELL = '$D$1'
 DIFF_GOOD_CELL = '$G$1'
-DIFF_BAD_CELL = '$J$1'
-DIFF_VERY_BAD_CELL = '$M$1'
+DIFF_BAD_CELL = '$L$1'
+DIFF_VERY_BAD_CELL = '$O$1'
 
 MISSED_GOOD_CELL = '$D$2'
 MISSED_WARNING_CELL = '$G$2'
@@ -25,3 +27,9 @@ DIFFICIENT_DIFFERENCE_MISSED = 0
 DIFFICIENT_MISSED = 1
 
 DATA_START_ROW = 5
+
+dark_red_fill = PatternFill(start_color='ff0000', end_color='ff0000', fill_type='solid')
+light_red_fill = PatternFill(start_color='ff7d7d', end_color='ff7d7d', fill_type='solid')
+yellow_fill = PatternFill(start_color='ffff00', end_color='ffff00', fill_type='solid')
+green_fill = PatternFill(start_color='55ff55', end_color='55ff55', fill_type='solid')
+blue_fill = PatternFill(start_color='00c2ff', end_color='00c2ff', fill_type='solid')
