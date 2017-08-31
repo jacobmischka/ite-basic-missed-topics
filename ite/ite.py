@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+from argparse import ArgumentParser
 import sys, re
 
 from ite_section import IteSection
 from ite_excel import dump_section_xlsx
+from ite_csv import dump_section_csv
 
 def extract(inpath):
 	headings = []
@@ -95,14 +97,23 @@ def extract_sections(rows):
 	return sections
 
 def main():
-	_, _, body = extract('/home/mischka/Downloads/ite and basic stuff/hm.txt')
+	parser = ArgumentParser(
+		description='Create spreadsheet summary of ITE missed topics report')
+	parser.add_argument('inpath',
+		help='Input txt file (convert from pdf using `pdftotext -raw`)')
+	parser.add_argument('outpath', help='Output file path')
+	parser.add_argument('-f', '--format', dest='format', default='xlsx',
+		choices=['xlsx', 'csv'], help='Output format')
+
+	args = parser.parse_args()
+
+	_, _, body = extract(args.inpath)
 	sections = extract_sections(body)
 
-	# print(headings, ns, body, sep='\n\n')
-	print(sections)
-
-	dump_section_xlsx(sections, './output/2017-ite-sections.xlsx')
-
+	if args.format == 'xlsx':
+		dump_section_xlsx(sections, args.outpath)
+	elif args.format == 'csv':
+		dump_section_csv(sections, args.outpath)
 
 if __name__ == '__main__':
 	main()
