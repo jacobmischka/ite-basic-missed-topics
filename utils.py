@@ -1,5 +1,4 @@
-from openpyxl.styles import Border
-import openpyxl.utils
+from openpyxl.utils.cell import get_column_letter
 
 def get_data_ranges(row_ranges):
 	return [(
@@ -13,11 +12,11 @@ def get_range(col, start, end, end_col=None, absolute_col=False, absolute_row=Fa
 
 	return '{}{}{}{}:{}{}{}{}'.format(
 		'$' if absolute_col else '',
-		openpyxl.utils.cell.get_column_letter(col),
+		get_column_letter(col),
 		'$' if absolute_row else '',
 		start,
 		'$' if absolute_col else '',
-		openpyxl.utils.cell.get_column_letter(end_col),
+		get_column_letter(end_col),
 		'$' if absolute_row else '',
 		end
 	)

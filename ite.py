@@ -5,10 +5,10 @@ from openpyxl.styles import NamedStyle, Font, PatternFill, Alignment
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.utils.cell import get_column_letter
 
-import csv, sys
+import csv, sys, re
 
 from ite_section import IteSection, IteItem
-from utils import get_data_ranges, get_range, get_range_list, get_ranges
+from utils import get_data_ranges, get_range, get_ranges
 
 DIFF_GREAT_CELL = 'D1'
 DIFF_GOOD_CELL = 'G1'
@@ -31,54 +31,62 @@ MISSED_BAD = 0.75
 DATA_START_ROW = 5
 
 def extract(inpath):
+	headings = []
+	ns = []
 	rows = []
-	row = None
 
 	with open(inpath, 'r') as infile:
 		for line in infile:
 			if should_skip(line):
 				continue
 
-			if is_new_row(line):
-				if row:
-					rows.append(row)
-				row = []
+			if is_heading_line(line):
+				if not headings:
+					headings = extract_headings(line)
+			elif is_n_line(line):
+				if not ns:
+					ns = extract_ns(line)
+			elif is_data_line(line):
+				try:
+					rows.append(extract_data_row(line))
+				except AttributeError as e:
+					print('Could not append row, skipping: {}'.format(e), file=sys.stderr)
+			else:
+				# Probably a new section
+				rows.append([line.strip()])
 
-			if row != None:
-				row.append(line.strip())
+	return headings, ns, rows
 
-	labels = rows[0]
+def extract_data_row(line):
+	line = line.strip()
+	match = re.search(r'(\(A\))|(\(B\))', line)
+	keyword = line[:match.end()]
+	pieces = line[match.end() + 1:]
+	return [keyword, *pieces.split(' ')]
 
-	body = [row for row in rows if row != labels]
+def extract_headings(line):
+	return ['{}{}'.format(
+		'% ' if i > 0 else '',
+		heading.strip()
+	) for i, heading in enumerate(line.strip().split('%'))]
 
-	return labels, body
+def extract_ns(line):
+	return [n.replace('N=', '') for n in line.strip().split(' ')]
 
-def is_heading(line):
-	# FIXME: This isn't good
-	return (
-		'Keyword' in line
-		or 'Basic Sciences' in line
-		or 'Clinical Sciences' in line
-		or 'Clinical Subspecialties' in line
-		or 'Special Problems' in line
-		or 'Basic items' in line
-		or 'Advanced items' in line
-	)
+def is_data_line(line):
+	return '(A)' in line or '(B)' in line
 
-def is_new_row(line):
-	return (
-		'(A)' in line
-		or '(B)' in line
-		or is_heading(line)
-	)
+def is_heading_line(line):
+	return 'Keyword' in line
+
+def is_n_line(line):
+	return 'N=' in line
 
 def should_skip(line):
 	return (
 		not line
 		or len(line.strip()) == 0
 		or 'Page' in line
-		or '#' in line
-		or 'N=' in line
 	)
 
 def dump_csv(labels, body, outpath):
@@ -338,8 +346,6 @@ def add_styles(worksheet, data_ranges):
 		worksheet[cell].style = 'Percent'
 
 def add_conditional_formatting(worksheet, data_ranges):
-	original_range = get_ranges(IteItem.CBY_TOTAL_COL, data_ranges,
-		end_col=IteItem.CA3_COL, separator=' ')
 	diff_range = get_ranges(IteItem.CBY_DIFF_COL, data_ranges,
 		end_col=IteItem.CA3_DIFF_COL, separator=' ')
 	missed_range = get_ranges(IteItem.CBY_MISSED_COL, data_ranges,
@@ -614,11 +620,12 @@ def write_xlsx_summary(worksheet, data_ranges, row):
 	)
 
 def main():
-	labels, body = extract('/home/mischka/Downloads/ite and basic stuff/ITE_ProgramItem_156002.txt')
-
-	# dump_csv(labels, body, './output/2017-ite.csv')
+	_, _, body = extract('/home/mischka/Downloads/ite and basic stuff/hm.txt')
 	sections = extract_sections(body)
-	dump_section_csv(sections, './output/2017-ite-sections.csv')
+
+	# print(headings, ns, body, sep='\n\n')
+	print(sections)
+
 	dump_section_xlsx(sections, './output/2017-ite-sections.xlsx')
 
 
