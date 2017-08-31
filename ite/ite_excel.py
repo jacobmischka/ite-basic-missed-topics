@@ -5,26 +5,35 @@ from openpyxl.utils.cell import get_column_letter
 
 from ite_section import IteSection, IteItem
 from utils import get_data_ranges, get_range, get_ranges
+from constants import (
+	DIFF_GREAT_CELL,
+	DIFF_GOOD_CELL,
+	DIFF_BAD_CELL,
+	DIFF_VERY_BAD_CELL,
 
-DIFF_GREAT_CELL = 'D1'
-DIFF_GOOD_CELL = 'G1'
-DIFF_BAD_CELL = 'J1'
-DIFF_VERY_BAD_CELL = 'M1'
+	MISSED_GOOD_CELL,
+	MISSED_WARNING_CELL,
+	MISSED_BAD_CELL,
 
-MISSED_GOOD_CELL = 'D2'
-MISSED_WARNING_CELL = 'G2'
-MISSED_BAD_CELL = 'J2'
+	DIFFICIENT_DIFFERENCE_COL,
+	DIFFICIENT_DIFFERENCE_MISSED_COL,
+	DIFFICIENT_MISSED_COL,
 
-DIFF_GREAT = 0.2
-DIFF_GOOD = 0
-DIFF_BAD = -0.1
-DIFF_VERY_BAD = -0.2
+	DIFF_GREAT,
+	DIFF_GOOD,
+	DIFF_BAD,
+	DIFF_VERY_BAD,
 
-MISSED_GOOD = 0.25
-MISSED_WARNING = 0.5
-MISSED_BAD = 0.75
+	MISSED_GOOD,
+	MISSED_WARNING,
+	MISSED_BAD,
 
-DATA_START_ROW = 5
+	DIFFICIENT_DIFFERENCE,
+	DIFFICIENT_DIFFERENCE_MISSED,
+	DIFFICIENT_MISSED,
+
+	DATA_START_ROW
+)
 
 def write_xlsx_legend(worksheet):
 	worksheet[DIFF_GREAT_CELL].value = DIFF_GREAT
@@ -47,6 +56,19 @@ def write_xlsx_legend(worksheet):
 
 	worksheet[MISSED_BAD_CELL].value = MISSED_BAD
 	worksheet[MISSED_BAD_CELL].offset(column=-1).value = 'Missed bad'
+
+	worksheet[DIFFICIENT_DIFFERENCE_COL].offset(column=-2).value = 'Difficient if'
+	worksheet[DIFFICIENT_DIFFERENCE_COL].offset(column=-1).value = 'National mean difference greater than'
+	worksheet[DIFFICIENT_DIFFERENCE_COL].value = DIFFICIENT_DIFFERENCE
+
+	worksheet[DIFFICIENT_DIFFERENCE_MISSED_COL].offset(column=-3).value = 'AND'
+	worksheet[DIFFICIENT_DIFFERENCE_MISSED_COL].offset(column=-1).value = '% Missed greater than'
+	worksheet[DIFFICIENT_DIFFERENCE_MISSED_COL].value = DIFFICIENT_DIFFERENCE_MISSED
+
+	worksheet[DIFFICIENT_MISSED_COL].offset(column=-3).value = 'OR'
+	worksheet[DIFFICIENT_MISSED_COL].offset(column=-1).value = '% Missed greater than'
+	worksheet[DIFFICIENT_MISSED_COL].value = DIFFICIENT_MISSED
+
 
 def dump_section_xlsx(sections, outpath):
 	wb = Workbook()
@@ -148,7 +170,10 @@ def add_styles(worksheet, data_ranges):
 		DIFF_VERY_BAD_CELL,
 		MISSED_GOOD_CELL,
 		MISSED_WARNING_CELL,
-		MISSED_BAD_CELL
+		MISSED_BAD_CELL,
+		DIFFICIENT_DIFFERENCE_COL,
+		DIFFICIENT_DIFFERENCE_MISSED_COL,
+		DIFFICIENT_MISSED_COL
 	]:
 		worksheet[cell].style = 'Percent'
 
@@ -165,25 +190,25 @@ def add_conditional_formatting(worksheet, data_ranges):
 	blue_fill = PatternFill(start_color='00c2ff', end_color='00c2ff', fill_type='solid')
 
 	worksheet.conditional_formatting.add(diff_range,
-		CellIsRule(operator='between', formula=[DIFF_GREAT, '1'], fill=blue_fill))
+		CellIsRule(operator='between', formula=[DIFF_GREAT_CELL, '1'], fill=blue_fill))
 	worksheet.conditional_formatting.add(diff_range,
-		CellIsRule(operator='between', formula=[DIFF_GOOD, DIFF_GREAT], fill=green_fill))
+		CellIsRule(operator='between', formula=[DIFF_GOOD_CELL, DIFF_GREAT_CELL], fill=green_fill))
 	worksheet.conditional_formatting.add(diff_range,
-		CellIsRule(operator='between', formula=[DIFF_BAD, DIFF_GOOD], fill=yellow_fill))
+		CellIsRule(operator='between', formula=[DIFF_BAD_CELL, DIFF_GOOD_CELL], fill=yellow_fill))
 	worksheet.conditional_formatting.add(diff_range,
-		CellIsRule(operator='between', formula=[DIFF_VERY_BAD, DIFF_BAD], fill=light_red_fill))
+		CellIsRule(operator='between', formula=[DIFF_VERY_BAD_CELL, DIFF_BAD_CELL], fill=light_red_fill))
 	worksheet.conditional_formatting.add(diff_range,
-		CellIsRule(operator='between', formula=['-1', DIFF_VERY_BAD], fill=dark_red_fill))
+		CellIsRule(operator='between', formula=['-1', DIFF_VERY_BAD_CELL], fill=dark_red_fill))
 
 
 	worksheet.conditional_formatting.add(missed_range,
-		CellIsRule(operator='between', formula=['0', MISSED_GOOD], fill=green_fill))
+		CellIsRule(operator='between', formula=['0', MISSED_GOOD_CELL], fill=green_fill))
 	worksheet.conditional_formatting.add(missed_range,
-		CellIsRule(operator='between', formula=[MISSED_GOOD, MISSED_WARNING], fill=yellow_fill))
+		CellIsRule(operator='between', formula=[MISSED_GOOD_CELL, MISSED_WARNING_CELL], fill=yellow_fill))
 	worksheet.conditional_formatting.add(missed_range,
-		CellIsRule(operator='between', formula=[MISSED_WARNING, MISSED_BAD], fill=light_red_fill))
+		CellIsRule(operator='between', formula=[MISSED_WARNING_CELL, MISSED_BAD_CELL], fill=light_red_fill))
 	worksheet.conditional_formatting.add(missed_range,
-		CellIsRule(operator='between', formula=[MISSED_BAD, '1'], fill=dark_red_fill))
+		CellIsRule(operator='between', formula=[MISSED_BAD_CELL, '1'], fill=dark_red_fill))
 
 def write_xlsx_summary(worksheet, data_ranges, row):
 	OVERALL_ROW = row

@@ -1,5 +1,11 @@
 from openpyxl.utils.cell import get_column_letter
 
+from constants import (
+	DIFFICIENT_DIFFERENCE_COL,
+	DIFFICIENT_DIFFERENCE_MISSED_COL,
+	DIFFICIENT_MISSED_COL
+)
+
 class IteSection(object):
 	HEADINGS = [
 		'',
@@ -282,14 +288,51 @@ class IteItem(object):
 			value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
 				get_column_letter(self.CBY_DIFF_COL),
 				row,
-				0.15,
+				DIFFICIENT_DIFFERENCE_COL,
 				get_column_letter(self.CBY_MISSED_COL),
 				row,
-				0,
+				DIFFICIENT_DIFFERENCE_MISSED_COL,
 				get_column_letter(self.CBY_MISSED_COL),
 				row,
-				1
+				DIFFICIENT_MISSED_COL
 			))
+		worksheet.cell(row=row, column=self.CA1_DIFFICIENT_COL,
+			value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+				get_column_letter(self.CA1_DIFF_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_COL,
+				get_column_letter(self.CA1_MISSED_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_MISSED_COL,
+				get_column_letter(self.CA1_MISSED_COL),
+				row,
+				DIFFICIENT_MISSED_COL
+			))
+		worksheet.cell(row=row, column=self.CA2_DIFFICIENT_COL,
+			value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+				get_column_letter(self.CA2_DIFF_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_COL,
+				get_column_letter(self.CA2_MISSED_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_MISSED_COL,
+				get_column_letter(self.CA2_MISSED_COL),
+				row,
+				DIFFICIENT_MISSED_COL
+			))
+		worksheet.cell(row=row, column=self.CA3_DIFFICIENT_COL,
+			value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+				get_column_letter(self.CA3_DIFF_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_COL,
+				get_column_letter(self.CA3_MISSED_COL),
+				row,
+				DIFFICIENT_DIFFERENCE_MISSED_COL,
+				get_column_letter(self.CA3_MISSED_COL),
+				row,
+				DIFFICIENT_MISSED_COL
+			))
+
 
 		return row + 1
 
