@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
-
 from openpyxl import Workbook
 from openpyxl.styles import NamedStyle, Font, PatternFill, Alignment
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.utils.cell import get_column_letter
-
-import csv, sys, re
 
 from ite_section import IteSection, IteItem
 from utils import get_data_ranges, get_range, get_ranges
@@ -30,194 +26,6 @@ MISSED_BAD = 0.75
 
 DATA_START_ROW = 5
 
-def extract(inpath):
-	headings = []
-	ns = []
-	rows = []
-
-	with open(inpath, 'r') as infile:
-		for line in infile:
-			if should_skip(line):
-				continue
-
-			if is_heading_line(line):
-				if not headings:
-					headings = extract_headings(line)
-			elif is_n_line(line):
-				if not ns:
-					ns = extract_ns(line)
-			elif is_data_line(line):
-				try:
-					rows.append(extract_data_row(line))
-				except AttributeError as e:
-					print('Could not append row, skipping: {}'.format(e), file=sys.stderr)
-			else:
-				# Probably a new section
-				rows.append([line.strip()])
-
-	return headings, ns, rows
-
-def extract_data_row(line):
-	line = line.strip()
-	match = re.search(r'(\(A\))|(\(B\))', line)
-	keyword = line[:match.end()]
-	pieces = line[match.end() + 1:]
-	return [keyword, *pieces.split(' ')]
-
-def extract_headings(line):
-	return ['{}{}'.format(
-		'% ' if i > 0 else '',
-		heading.strip()
-	) for i, heading in enumerate(line.strip().split('%'))]
-
-def extract_ns(line):
-	return [n.replace('N=', '') for n in line.strip().split(' ')]
-
-def is_data_line(line):
-	return '(A)' in line or '(B)' in line
-
-def is_heading_line(line):
-	return 'Keyword' in line
-
-def is_n_line(line):
-	return 'N=' in line
-
-def should_skip(line):
-	return (
-		not line
-		or len(line.strip()) == 0
-		or 'Page' in line
-	)
-
-def dump_csv(labels, body, outpath):
-	rows = [
-		labels,
-		*body
-	]
-
-	with open(outpath, 'w') as outfile:
-		writer = csv.writer(outfile)
-		writer.writerows(rows)
-
-def extract_sections(rows):
-	sections = []
-	heading = None
-	subheading = None
-	items = []
-
-	for row in rows:
-		if len(row) == 1:
-			if not heading:
-				heading = row[0]
-			elif not subheading:
-				subheading = row[0]
-			elif items:
-				try:
-					sections.append(IteSection(heading, subheading, items))
-					heading = row[0]
-					subheading = None
-					items = []
-				except Exception as e:
-					print(e, file=sys.stderr)
-		else:
-			items.append(row)
-
-	try:
-		sections.append(IteSection(heading, subheading, items))
-	except Exception as e:
-		print(e, file=sys.stderr)
-
-	return sections
-
-def get_csv_rows(sections):
-	rows = []
-	items = []
-
-	for section in sections:
-		rows += section.get_csv_rows()
-		rows.append([])
-		items += section.items
-
-	rows.append([])
-
-	rows.append([
-		'Overall averages',
-		'',
-		sum([item.cby_total for item in items])/len(items),
-		sum([item.cby for item in items])/len(items),
-		sum([item.ca1_total for item in items])/len(items),
-		sum([item.ca1 for item in items])/len(items),
-		sum([item.ca2_total for item in items])/len(items),
-		sum([item.ca2 for item in items])/len(items),
-		sum([item.ca3_total for item in items])/len(items),
-		sum([item.ca3 for item in items])/len(items),
-		'',
-		sum([item.cby_diff for item in items])/len(items),
-		sum([item.ca1_diff for item in items])/len(items),
-		sum([item.ca2_diff for item in items])/len(items),
-		sum([item.ca3_diff for item in items])/len(items),
-		'',
-		sum([item.cby_missed for item in items])/len(items),
-		sum([item.ca1_missed for item in items])/len(items),
-		sum([item.ca2_missed for item in items])/len(items),
-		sum([item.ca3_missed for item in items])/len(items)
-	])
-
-	advanced_items = [item for item in items if item.item_type == 'A']
-	basic_items = [item for item in items if item.item_type == 'B']
-
-	rows.append([
-		'Advanced averages',
-		'',
-		sum([item.cby_total for item in advanced_items])/len(advanced_items),
-		sum([item.cby for item in advanced_items])/len(advanced_items),
-		sum([item.ca1_total for item in advanced_items])/len(advanced_items),
-		sum([item.ca1 for item in advanced_items])/len(advanced_items),
-		sum([item.ca2_total for item in advanced_items])/len(advanced_items),
-		sum([item.ca2 for item in advanced_items])/len(advanced_items),
-		sum([item.ca3_total for item in advanced_items])/len(advanced_items),
-		sum([item.ca3 for item in advanced_items])/len(advanced_items),
-		'',
-		sum([item.cby_diff for item in advanced_items])/len(advanced_items),
-		sum([item.ca1_diff for item in advanced_items])/len(advanced_items),
-		sum([item.ca2_diff for item in advanced_items])/len(advanced_items),
-		sum([item.ca3_diff for item in advanced_items])/len(advanced_items),
-		'',
-		sum([item.cby_missed for item in advanced_items])/len(advanced_items),
-		sum([item.ca1_missed for item in advanced_items])/len(advanced_items),
-		sum([item.ca2_missed for item in advanced_items])/len(advanced_items),
-		sum([item.ca3_missed for item in advanced_items])/len(advanced_items)
-	])
-	rows.append([
-		'Basic averages',
-		'',
-		sum([item.cby_total for item in basic_items])/len(basic_items),
-		sum([item.cby for item in basic_items])/len(basic_items),
-		sum([item.ca1_total for item in basic_items])/len(basic_items),
-		sum([item.ca1 for item in basic_items])/len(basic_items),
-		sum([item.ca2_total for item in basic_items])/len(basic_items),
-		sum([item.ca2 for item in basic_items])/len(basic_items),
-		sum([item.ca3_total for item in basic_items])/len(basic_items),
-		sum([item.ca3 for item in basic_items])/len(basic_items),
-		'',
-		sum([item.cby_diff for item in basic_items])/len(basic_items),
-		sum([item.ca1_diff for item in basic_items])/len(basic_items),
-		sum([item.ca2_diff for item in basic_items])/len(basic_items),
-		sum([item.ca3_diff for item in basic_items])/len(basic_items),
-		'',
-		sum([item.cby_missed for item in basic_items])/len(basic_items),
-		sum([item.ca1_missed for item in basic_items])/len(basic_items),
-		sum([item.ca2_missed for item in basic_items])/len(basic_items),
-		sum([item.ca3_missed for item in basic_items])/len(basic_items)
-	])
-
-	return rows
-
-def dump_section_csv(sections, outpath):
-	with open(outpath, 'w') as outfile:
-		writer = csv.writer(outfile)
-		writer.writerows(get_csv_rows(sections))
-
 def write_xlsx_legend(worksheet):
 	worksheet[DIFF_GREAT_CELL].value = DIFF_GREAT
 	worksheet[DIFF_GREAT_CELL].offset(column=-1).value = 'Diff great'
@@ -239,7 +47,6 @@ def write_xlsx_legend(worksheet):
 
 	worksheet[MISSED_BAD_CELL].value = MISSED_BAD
 	worksheet[MISSED_BAD_CELL].offset(column=-1).value = 'Missed bad'
-
 
 def dump_section_xlsx(sections, outpath):
 	wb = Workbook()
@@ -618,16 +425,3 @@ def write_xlsx_summary(worksheet, data_ranges, row):
 			get_range(IteItem.CA3_MISSED_COL, data_ranges[0][0], data_ranges[-1][-1])
 		)
 	)
-
-def main():
-	_, _, body = extract('/home/mischka/Downloads/ite and basic stuff/hm.txt')
-	sections = extract_sections(body)
-
-	# print(headings, ns, body, sep='\n\n')
-	print(sections)
-
-	dump_section_xlsx(sections, './output/2017-ite-sections.xlsx')
-
-
-if __name__ == '__main__':
-	main()
