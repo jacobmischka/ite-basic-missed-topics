@@ -22,6 +22,9 @@ def main():
 		choices=['basic', 'ite'], required=True, help='Report type')
 	parser.add_argument('-f', '--format', dest='format', default='xlsx',
 		choices=['xlsx'], help='Output format (default xlsx)')
+	parser.add_argument('--percentages-last', dest='percentages_last', action='store_true',
+		help='Assume percentages at end of basic line (`# # % %` instead of `# % # %`, '
+		'useful with fix_higher_percentages.py)')
 
 	args = parser.parse_args()
 
@@ -36,7 +39,7 @@ def main():
 			ite_csv.dump_section_csv(sections, args.outpath)
 	elif args.type == 'basic':
 		body = basic.extract(args.inpath)
-		sections = basic.extract_sections(body)
+		sections = basic.extract_sections(body, percentages_last=args.percentages_last)
 
 		if args.format == 'xlsx':
 			basic_excel.dump_section_xlsx(sections, args.outpath)

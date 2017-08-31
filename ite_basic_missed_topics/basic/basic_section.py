@@ -9,10 +9,10 @@ class BasicSection(object):
 		'Missed %'
 	]
 
-	def __init__(self, heading, subheading, items):
+	def __init__(self, heading, subheading, items, percentages_last=False):
 		self.heading = heading
 		self.subheading = subheading
-		self.items = [BasicItem(item) for item in items]
+		self.items = [BasicItem(item, percentages_last=percentages_last) for item in items]
 
 	def write_xlsx_headings(self, worksheet, row):
 		for col, heading in enumerate(self.HEADINGS):
@@ -57,14 +57,24 @@ class BasicItem(object):
 	PERCENT_DIFF_COL = 6
 	MISSED_COL = 7
 
-	def __init__(self, row):
-		(
-			self.keyword,
-			self.total_num,
-			self.total_percent,
-			self.num,
-			self.percent
-		) = row
+	def __init__(self, row, percentages_last=False):
+		# Prior to 2017 the order was different on the PDF
+		if percentages_last:
+			(
+				self.keyword,
+				self.total_num,
+				self.num,
+				self.total_percent,
+				self.percent
+			) = row
+		else:
+			(
+				self.keyword,
+				self.total_num,
+				self.total_percent,
+				self.num,
+				self.percent
+			) = row
 
 	def write_xlsx_row(self, worksheet, row):
 		worksheet.cell(row=row, column=self.KEYWORD_COL, value=self.keyword)

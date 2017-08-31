@@ -46,7 +46,7 @@ def should_skip(line):
 def is_data_line(line):
 	return '%' in line
 
-def extract_sections(rows):
+def extract_sections(rows, percentages_last=False):
 	sections = []
 	heading = None
 	subheading = None
@@ -56,7 +56,7 @@ def extract_sections(rows):
 		if len(row) == 1:
 			if items:
 				try:
-					sections.append(BasicSection(heading, subheading, items))
+					sections.append(BasicSection(heading, subheading, items, percentages_last=percentages_last))
 					heading = None
 					subheading = None
 					items = []
@@ -72,7 +72,7 @@ def extract_sections(rows):
 			items.append(row)
 
 	try:
-		sections.append(BasicSection(heading, subheading, items))
+		sections.append(BasicSection(heading, subheading, items, percentages_last=percentages_last))
 	except Exception as e:
 		print(e, file=sys.stderr)
 
