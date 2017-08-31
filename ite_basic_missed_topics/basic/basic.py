@@ -1,70 +1,50 @@
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser
-import sys, re
 
-from ite_section import IteSection
-from ite_excel import dump_section_xlsx
-from ite_csv import dump_section_csv
+from .basic_section import BasicSection
+from .basic_excel import dump_section_xlsx
+
+import sys
 
 def extract(inpath):
-	headings = []
-	ns = []
 	rows = []
+	row_in_progress = []
 
 	with open(inpath, 'r') as infile:
 		for line in infile:
 			if should_skip(line):
 				continue
 
-			if is_heading_line(line):
-				if not headings:
-					headings = extract_headings(line)
-			elif is_n_line(line):
-				if not ns:
-					ns = extract_ns(line)
 			elif is_data_line(line):
 				try:
+					if row_in_progress:
+						rows.append([' '.join(row_in_progress)])
+						row_in_progress = []
 					rows.append(extract_data_row(line))
 				except AttributeError as e:
 					print('Could not append row, skipping: {}'.format(e), file=sys.stderr)
 			else:
 				# Probably a new section
-				rows.append([line.strip()])
+				row_in_progress.append(line.strip())
 
-	return headings, ns, rows
+	return rows
 
 def extract_data_row(line):
-	line = line.strip()
-	match = re.search(r'(\(A\))|(\(B\))', line)
-	keyword = line[:match.end()]
-	pieces = line[match.end() + 1:]
-	return [keyword, *pieces.split(' ')]
-
-def extract_headings(line):
-	return ['{}{}'.format(
-		'% ' if i > 0 else '',
-		heading.strip()
-	) for i, heading in enumerate(line.strip().split('%'))]
-
-def extract_ns(line):
-	return [n.replace('N=', '') for n in line.strip().split(' ')]
-
-def is_data_line(line):
-	return '(A)' in line or '(B)' in line
-
-def is_heading_line(line):
-	return 'Keyword' in line
-
-def is_n_line(line):
-	return 'N=' in line
+	return line.strip().rsplit(maxsplit=4)
 
 def should_skip(line):
 	return (
 		not line
 		or len(line.strip()) == 0
 		or 'Page' in line
+		or '#' in line
+		or 'Examinees' in line
+		or 'Your Program' in line
 	)
+
+def is_data_line(line):
+	return '%' in line
 
 def extract_sections(rows):
 	sections = []
@@ -74,23 +54,25 @@ def extract_sections(rows):
 
 	for row in rows:
 		if len(row) == 1:
-			if not heading:
-				heading = row[0]
-			elif not subheading:
-				subheading = row[0]
-			elif items:
+			if items:
 				try:
-					sections.append(IteSection(heading, subheading, items))
-					heading = row[0]
+					sections.append(BasicSection(heading, subheading, items))
+					heading = None
 					subheading = None
 					items = []
 				except Exception as e:
 					print(e, file=sys.stderr)
+
+			if not heading:
+				heading, subheading = row[0].strip().split('(')
+				heading = heading.strip()
+				subheading = subheading[:-1].strip()
+
 		else:
 			items.append(row)
 
 	try:
-		sections.append(IteSection(heading, subheading, items))
+		sections.append(BasicSection(heading, subheading, items))
 	except Exception as e:
 		print(e, file=sys.stderr)
 
@@ -103,17 +85,17 @@ def main():
 		help='Input txt file (convert from pdf using `pdftotext -raw`)')
 	parser.add_argument('outpath', help='Output file path')
 	parser.add_argument('-f', '--format', dest='format', default='xlsx',
-		choices=['xlsx', 'csv'], help='Output format')
+		choices=['xlsx'], help='Output format (default xlsx)')
 
 	args = parser.parse_args()
 
-	_, _, body = extract(args.inpath)
+	body = extract(args.inpath)
 	sections = extract_sections(body)
 
 	if args.format == 'xlsx':
 		dump_section_xlsx(sections, args.outpath)
-	elif args.format == 'csv':
-		dump_section_csv(sections, args.outpath)
+	# elif args.format == 'csv':
+	# 	dump_section_csv(sections, args.outpath)
 
 if __name__ == '__main__':
 	main()

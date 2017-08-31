@@ -3,9 +3,9 @@ from openpyxl.styles import NamedStyle, Font, PatternFill, Alignment
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.utils.cell import get_column_letter
 
-from ite_section import IteSection, IteItem
-from utils import get_data_ranges, get_range, get_ranges
-from constants import (
+from .ite_section import IteSection, IteItem
+from ..utils import get_data_ranges, get_range, get_ranges
+from ..constants import (
 	DIFF_GREAT_CELL,
 	DIFF_GOOD_CELL,
 	DIFF_BAD_CELL,

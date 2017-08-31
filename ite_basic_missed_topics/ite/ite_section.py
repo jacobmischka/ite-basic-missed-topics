@@ -1,6 +1,6 @@
 from openpyxl.utils.cell import get_column_letter
 
-from constants import (
+from ..constants import (
 	DIFFICIENT_DIFFERENCE_COL,
 	DIFFICIENT_DIFFERENCE_MISSED_COL,
 	DIFFICIENT_MISSED_COL
