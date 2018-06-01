@@ -4,13 +4,16 @@ from argparse import ArgumentParser
 
 STRINGS_TO_SKIP = [
 	'AMERICAN BOARD OF ANESTHESIOLOGY',
+	'ABA In-Training Examination',
 	'156002',
 	'Program :',
-	"Program Summary of Examinees' Item Performance",
+	"Program Summary",
 	'BASIC Examination',
 	'Page',
 
 	'Listed below are the keyword phrases describing',
+	'(B) after the keyword',
+	'(A) after the keyword',
 	'The numbers printed to the right of each',
 	'PERCENT(%)',
 	'This report is designed to help you identify specific'
