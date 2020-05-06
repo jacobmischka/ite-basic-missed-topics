@@ -5,8 +5,8 @@ from argparse import ArgumentParser
 STRINGS_TO_SKIP = [
     "AMERICAN BOARD OF ANESTHESIOLOGY",
     "In-Training Examination",
-    "156002",
     "Program :",
+    "Program:",
     "Program Summary",
     "BASIC Examination",
     "Page",
@@ -16,6 +16,14 @@ STRINGS_TO_SKIP = [
     "The numbers printed to the right of each",
     "PERCENT(%)",
     "This report is designed to help you identify specific",
+    "This report assists you",
+    "performance of each of your residents",
+    "For each resident,",
+    "These scores range from a low",
+    "high of 50",
+    "Level of Training",
+    "Scaled Score",
+    "Improvement In Performance Report",
 ]
 
 

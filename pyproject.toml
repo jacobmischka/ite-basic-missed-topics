@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.8"
 openpyxl = "^3.0.3"
 "pdfminer.six" = "^20200402"
+matplotlib = "^3.2.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.5.2"
