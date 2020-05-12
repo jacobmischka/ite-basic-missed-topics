@@ -73,13 +73,16 @@ def plot_year(year, trainees, score_index, norm_table):
 
         fig, ax = plt.subplots()
         points = [norm_table[level][t.scores[level]] for t in trainees]
-        x = list(range(len(points)))
+        x = range(len(points))
         ax.bar(x, points)
+        ax.hlines(avg(points), -1, len(points), colors="red", label="Average")
+        ax.hlines(median(points), -1, len(points), colors="orange", label="Median")
         ax.set_title(year)
         ax.set_ylabel("Percentile rank")
         ax.set_yticks(range(0, 100, 10))
         ax.set_xlabel(level)
         ax.set_xticks(x)
+        fig.legend()
 
         fig.tight_layout()
         plt.tight_layout()
@@ -90,6 +93,14 @@ def plot_year(year, trainees, score_index, norm_table):
         print()
 
     plt.show()
+
+
+def avg(points):
+    return sum(points) / len(points)
+
+
+def median(points):
+    return sorted(points)[len(points) // 2]
 
 
 def parse_scores(pdf_text):
