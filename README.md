@@ -1,15 +1,26 @@
 # Missed topic summaries for ITE and Basic exams
 
-Produces a spreadsheet summarizing the aggregate results for AGCME's ITE or
-Basic exams.
+Produces a spreadsheet summarizing the aggregate results for AGCME's ITE
+(ProgramItem report) or Basic exams.
 
 ```bash
 $ pdftotext -raw infile.pdf outfile.txt
-$ ./strip_header.py outfile.txt outfile-stripped.txt
-$ ./missed_topics.py -t $TYPE outfile-stripped.txt outfile.xlsx
+$ strip_acgme_header outfile.txt outfile-stripped.txt
+$ acgme_missed_topics -t $TYPE outfile-stripped.txt outfile.xlsx
 ```
 
 `$TYPE` is one of `basic` or `ite`.
+
+## Installation
+
+To install globally, build the wheel using `poetry build`, and install it using `pip`.
+
+The following binaries are provided when installing, corresponding to the
+`main` functions of their corresponding scripts:
+
+- `strip_acgme_header`: `strip_header.py`
+- `acgme_missed_topics`: `missed_topics.py`
+- `ite_plot_percentiles`: `percentile_plotting.py`
 
 ## Criteria and configuration
 
@@ -41,7 +52,7 @@ Produces training level bar charts from ITE Improvement in Performance report.
 Report PDF should be converted to text and stripped as above.
 
 ```bash
-$ ./percentile_plotting.py < improvement-in-performance-stripped.txt 3< scaled-score-guideline-norm-table.txt
+$ ite_plot_percentiles < improvement-in-performance-stripped.txt 3< scaled-score-guideline-norm-table.txt
 ```
 
 Takes ITE Guideline Norm Table Scaled Scores as input on file descriptor 3.

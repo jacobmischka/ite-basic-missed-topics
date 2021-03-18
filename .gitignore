@@ -3,3 +3,5 @@ output/
 __pycache__/
 .pyre/
 *.egg-info
+.vim/
+dist/
