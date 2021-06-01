@@ -31,6 +31,12 @@ def main():
         help="Output format (default xlsx)",
     )
     parser.add_argument(
+        "--numbers-inline",
+        dest="numbers_inline",
+        action="store_true",
+        help="Look for N count inline in each row (prior to 2021)",
+    )
+    parser.add_argument(
         "--percentages-last",
         dest="percentages_last",
         action="store_true",
@@ -48,8 +54,12 @@ def main():
         elif args.format == "csv":
             ite_csv.dump_section_csv(sections, args.outpath)
     elif args.type == "basic":
-        body = basic.extract(args.inpath)
-        sections = basic.extract_sections(body, percentages_last=args.percentages_last)
+        body = basic.extract(args.inpath, args.numbers_inline)
+        sections = basic.extract_sections(
+            body,
+            numbers_inline=args.numbers_inline,
+            percentages_last=args.percentages_last,
+        )
 
         if args.format == "xlsx":
             basic_excel.dump_section_xlsx(sections, args.outpath)

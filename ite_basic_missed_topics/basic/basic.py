@@ -5,10 +5,10 @@ from argparse import ArgumentParser
 from .basic_section import BasicSection
 from .basic_excel import dump_section_xlsx
 
-import sys
+import sys, re
 
 
-def extract(inpath):
+def extract(inpath, numbers_inline):
     rows = []
     row_in_progress = []
 
@@ -17,12 +17,15 @@ def extract(inpath):
             if should_skip(line):
                 continue
 
+            elif is_num_line(line):
+                rows.append([line.strip()])
+
             elif is_data_line(line):
                 try:
                     if row_in_progress:
                         rows.append([" ".join(row_in_progress)])
                         row_in_progress = []
-                    rows.append(extract_data_row(line))
+                    rows.append(extract_data_row(line, numbers_inline=numbers_inline))
                 except AttributeError as e:
                     print(
                         "Could not append row, skipping: {}".format(e), file=sys.stderr
@@ -34,8 +37,9 @@ def extract(inpath):
     return rows
 
 
-def extract_data_row(line):
-    return line.strip().rsplit(maxsplit=4)
+def extract_data_row(line, numbers_inline=False):
+    maxsplit = 4 if numbers_inline else 2
+    return line.strip().rsplit(maxsplit=maxsplit)
 
 
 def should_skip(line):
@@ -53,14 +57,29 @@ def is_data_line(line):
     return "%" in line
 
 
-def extract_sections(rows, percentages_last=False):
+def is_num_line(line):
+    return "N =" in line
+
+
+def get_nums(line):
+    m = re.match(r"N = (\d+) N = (\d+)", line)
+    return m.group(1, 2)
+
+
+def extract_sections(rows, numbers_inline=False, percentages_last=False):
     sections = []
     heading = None
     subheading = None
+    total_num = None
+    program_num = None
     items = []
 
     for row in rows:
         if len(row) == 1:
+            if is_num_line(row[0]):
+                total_num, program_num = get_nums(row[0])
+                continue
+
             if items:
                 try:
                     sections.append(
@@ -68,6 +87,9 @@ def extract_sections(rows, percentages_last=False):
                             heading,
                             subheading,
                             items,
+                            total_num=total_num,
+                            program_num=program_num,
+                            numbers_inline=numbers_inline,
                             percentages_last=percentages_last,
                         )
                     )
@@ -75,7 +97,7 @@ def extract_sections(rows, percentages_last=False):
                     subheading = None
                     items = []
                 except Exception as e:
-                    print(e, file=sys.stderr)
+                    print("Failed creating section", e, file=sys.stderr)
 
             if not heading:
                 heading, subheading = row[0].strip().split("(")
@@ -87,10 +109,18 @@ def extract_sections(rows, percentages_last=False):
 
     try:
         sections.append(
-            BasicSection(heading, subheading, items, percentages_last=percentages_last)
+            BasicSection(
+                heading,
+                subheading,
+                items,
+                total_num=total_num,
+                program_num=program_num,
+                numbers_inline=numbers_inline,
+                percentages_last=percentages_last,
+            )
         )
     except Exception as e:
-        print(e, file=sys.stderr)
+        print("Failed creating section", e, file=sys.stderr)
 
     return sections
 
@@ -111,10 +141,16 @@ def main():
         choices=["xlsx"],
         help="Output format (default xlsx)",
     )
+    parser.add_argument(
+        "--numbers-inline",
+        dest="numbers_inline",
+        action="store_true",
+        help="Look for N count inline in each row (prior to 2021)",
+    )
 
     args = parser.parse_args()
 
-    body = extract(args.inpath)
+    body = extract(args.inpath, args.numbers_inline)
     sections = extract_sections(body)
 
     if args.format == "xlsx":

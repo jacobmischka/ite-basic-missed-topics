@@ -4,11 +4,27 @@ from openpyxl.utils.cell import get_column_letter
 class BasicSection(object):
     HEADINGS = ["% total CA-1", "% our CA-1", "", "Difference from total", "Missed %"]
 
-    def __init__(self, heading, subheading, items, percentages_last=False):
+    def __init__(
+        self,
+        heading,
+        subheading,
+        items,
+        total_num=None,
+        program_num=None,
+        numbers_inline=False,
+        percentages_last=False,
+    ):
         self.heading = heading
         self.subheading = subheading
         self.items = [
-            BasicItem(item, percentages_last=percentages_last) for item in items
+            BasicItem(
+                item,
+                total_num=total_num,
+                program_num=program_num,
+                numbers_inline=numbers_inline,
+                percentages_last=percentages_last,
+            )
+            for item in items
         ]
 
     def write_xlsx_headings(self, worksheet, row):
@@ -55,24 +71,41 @@ class BasicItem(object):
     PERCENT_DIFF_COL = 6
     MISSED_COL = 7
 
-    def __init__(self, row, percentages_last=False):
-        # Prior to 2017 the order was different on the PDF
-        if percentages_last:
-            (
-                self.keyword,
-                self.total_num,
-                self.num,
-                self.total_percent,
-                self.percent,
-            ) = row
+    def __init__(
+        self,
+        row,
+        total_num=None,
+        program_num=None,
+        numbers_inline=False,
+        percentages_last=False,
+    ):
+        # Prior to 2021 numbers were given inline in each row
+        if numbers_inline:
+            # Prior to 2017 the order was different on the PDF
+            if percentages_last:
+                (
+                    self.keyword,
+                    self.total_num,
+                    self.num,
+                    self.total_percent,
+                    self.percent,
+                ) = row
+            else:
+                (
+                    self.keyword,
+                    self.total_num,
+                    self.total_percent,
+                    self.num,
+                    self.percent,
+                ) = row
         else:
             (
                 self.keyword,
-                self.total_num,
                 self.total_percent,
-                self.num,
                 self.percent,
             ) = row
+            self.total_num = total_num
+            self.num = program_num
 
     def write_xlsx_row(self, worksheet, row):
         worksheet.cell(row=row, column=self.KEYWORD_COL, value=self.keyword)
@@ -98,20 +131,20 @@ class BasicItem(object):
         return row + 1
 
     @classmethod
-    def write_xlsx_summary_row(self, worksheet, row, start_row, end_row):
+    def write_xlsx_summary_row(cls, worksheet, row, start_row, end_row):
         worksheet.cell(
             row=row,
-            column=self.PERCENT_DIFF_COL,
-            value=self.average_column(self.PERCENT_DIFF_COL, start_row, end_row),
+            column=cls.PERCENT_DIFF_COL,
+            value=cls.average_column(cls.PERCENT_DIFF_COL, start_row, end_row),
         )
         worksheet.cell(
             row=row,
-            column=self.MISSED_COL,
-            value=self.average_column(self.MISSED_COL, start_row, end_row),
+            column=cls.MISSED_COL,
+            value=cls.average_column(cls.MISSED_COL, start_row, end_row),
         )
 
     @classmethod
-    def average_column(self, col, start_row, end_row):
+    def average_column(cls, col, start_row, end_row):
         return "=AVERAGE({}{}:{}{})".format(
             get_column_letter(col), start_row, get_column_letter(col), end_row
         )
