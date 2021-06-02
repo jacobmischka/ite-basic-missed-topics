@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ite-basic-missed-topics"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Jacob Mischka <jmischka@mcw.edu>"]
 license = "MIT"
