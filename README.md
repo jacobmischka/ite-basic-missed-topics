@@ -1,7 +1,8 @@
 # Missed topic summaries for ITE and Basic exams
 
 Produces a spreadsheet summarizing the aggregate results for AGCME's ITE
-(ProgramItem report) or Basic exams.
+(ProgramItem report) or Basic (Program Summary of Examinees' Item Performance
+report) exams.
 
 ```bash
 $ pdftotext -raw infile.pdf outfile.txt
