@@ -8,32 +8,29 @@ from .ite_excel import dump_section_xlsx
 from .ite_csv import dump_section_csv
 
 
-def extract(inpath):
+def extract(infile):
     headings = []
     ns = []
     rows = []
 
-    with open(inpath, "r") as infile:
-        for line in infile:
-            if should_skip(line):
-                continue
+    for line in infile.splitlines():
+        if should_skip(line):
+            continue
 
-            if is_heading_line(line):
-                if not headings:
-                    headings = extract_headings(line)
-            elif is_n_line(line):
-                if not ns:
-                    ns = extract_ns(line)
-            elif is_data_line(line):
-                try:
-                    rows.append(extract_data_row(line))
-                except AttributeError as e:
-                    print(
-                        "Could not append row, skipping: {}".format(e), file=sys.stderr
-                    )
-            else:
-                # Probably a new section
-                rows.append([line.strip()])
+        if is_heading_line(line):
+            if not headings:
+                headings = extract_headings(line)
+        elif is_n_line(line):
+            if not ns:
+                ns = extract_ns(line)
+        elif is_data_line(line):
+            try:
+                rows.append(extract_data_row(line))
+            except AttributeError as e:
+                print("Could not append row, skipping: {}".format(e), file=sys.stderr)
+        else:
+            # Probably a new section
+            rows.append([line.strip()])
 
     return headings, ns, rows
 

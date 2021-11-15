@@ -8,31 +8,28 @@ from .basic_excel import dump_section_xlsx
 import sys, re
 
 
-def extract(inpath, numbers_inline):
+def extract(infile, numbers_inline):
     rows = []
     row_in_progress = []
 
-    with open(inpath, "r") as infile:
-        for line in infile:
-            if should_skip(line):
-                continue
+    for line in infile.splitlines():
+        if should_skip(line):
+            continue
 
-            elif is_num_line(line):
-                rows.append([line.strip()])
+        elif is_num_line(line):
+            rows.append([line.strip()])
 
-            elif is_data_line(line):
-                try:
-                    if row_in_progress:
-                        rows.append([" ".join(row_in_progress)])
-                        row_in_progress = []
-                    rows.append(extract_data_row(line, numbers_inline=numbers_inline))
-                except AttributeError as e:
-                    print(
-                        "Could not append row, skipping: {}".format(e), file=sys.stderr
-                    )
-            else:
-                # Probably a new section
-                row_in_progress.append(line.strip())
+        elif is_data_line(line):
+            try:
+                if row_in_progress:
+                    rows.append([" ".join(row_in_progress)])
+                    row_in_progress = []
+                rows.append(extract_data_row(line, numbers_inline=numbers_inline))
+            except AttributeError as e:
+                print("Could not append row, skipping: {}".format(e), file=sys.stderr)
+        else:
+            # Probably a new section
+            row_in_progress.append(line.strip())
 
     return rows
 

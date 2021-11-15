@@ -9,8 +9,9 @@ include = ["ite_basic_missed_topics/*", "fix_higher_percentages.py", "missed_top
 [tool.poetry.dependencies]
 python = "^3.8"
 openpyxl = "^3.0.3"
-"pdfminer.six" = "^20200402"
 matplotlib = "^3.2.1"
+Gooey = "^1.0.8"
+pdftotext = "^2.2.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.7.1"

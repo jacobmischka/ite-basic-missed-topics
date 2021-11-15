@@ -28,6 +28,9 @@ STRINGS_TO_SKIP = [
 
 
 def should_skip(line):
+    if len(line) == 0:
+        return True
+
     for s in STRINGS_TO_SKIP:
         if s in line:
             return True
@@ -35,11 +38,10 @@ def should_skip(line):
     return False
 
 
-def strip_header(inpath, outpath):
-    with open(inpath, "r") as infile, open(outpath, "w") as outfile:
-        for line in infile:
-            if not should_skip(line):
-                outfile.write(line)
+def strip_header(infile):
+    for line in infile:
+        if not should_skip(line):
+            yield line
 
 
 def main():
@@ -49,7 +51,9 @@ def main():
 
     args = parser.parse_args()
 
-    strip_header(args.inpath, args.outpath)
+    with open(args.inpath, "r") as infile, open(args.outpath, "w") as outfile:
+        for line in strip_header(infile):
+            outfile.write(line)
 
 
 if __name__ == "__main__":

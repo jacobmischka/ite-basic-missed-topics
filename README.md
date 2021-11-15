@@ -4,10 +4,12 @@ Produces a spreadsheet summarizing the aggregate results for AGCME's ITE
 (ProgramItem report) or Basic (Program Summary of Examinees' Item Performance
 report) exams.
 
+By default, `acgme_missed_topics` will open a GUI built by
+[Gooey](https://github.com/chriskiehl/Gooey).
+Disable by setting the `GUI_DISABLE` environment variable.
+
 ```bash
-$ pdftotext -raw infile.pdf outfile.txt
-$ strip_acgme_header outfile.txt outfile-stripped.txt
-$ acgme_missed_topics -t $TYPE outfile-stripped.txt outfile.xlsx
+$ GUI_DISABLE=1 acgme_missed_topics -t $TYPE infile.pdf outfile.xlsx
 ```
 
 `$TYPE` is one of `basic` or `ite`.
@@ -47,7 +49,6 @@ highlighting and "Deficient Area" marks should update automatically!
 
 
 ## Percentile plotting
-
 
 Produces training level bar charts from ITE Improvement in Performance report.
 Report PDF should be converted to text and stripped as above.
