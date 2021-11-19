@@ -20,7 +20,7 @@ exe = EXE(pyz,
           options,
           gooey_languages, # Add them in to collected files
           gooey_images, # Same here.
-          name='ite-basic-percentile-plotting',
+          name='ite-percentile-plotting',
           debug=False,
           strip=None,
           upx=True,

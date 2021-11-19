@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ite-basic-missed-topics"
-version = "0.2.0"
+version = "1.0.0"
 description = ""
 authors = ["Jacob Mischka <jmischka@mcw.edu>"]
 license = "MIT"
@@ -17,9 +17,8 @@ pdftotext = "^2.2.1"
 pylint = "^2.7.1"
 
 [tool.poetry.scripts]
-strip_acgme_header = "strip_header:main"
-acgme_missed_topics = "missed_topics:main"
-ite_plot_percentiles = "percentile_plotting:main"
+ite-basic-missed-topics = "missed_topics:main"
+ite-percentile-plotting = "percentile_plotting:main"
 
 [build-system]
 requires = ["poetry>=0.12"]
