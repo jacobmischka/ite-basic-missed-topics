@@ -3,7 +3,7 @@ gooey_root = os.path.dirname(gooey.__file__)
 gooey_languages = Tree(os.path.join(gooey_root, 'languages'), prefix = 'gooey/languages')
 gooey_images = Tree(os.path.join(gooey_root, 'images'), prefix = 'gooey/images')
 a = Analysis(['missed_topics.py'],
-             pathex=['c:\\Python27\\Scripts'],
+             pathex=['c:\\Python310\\Scripts'],
              hiddenimports=[],
              hookspath=None,
              runtime_hooks=None,
@@ -20,7 +20,7 @@ exe = EXE(pyz,
           options,
           gooey_languages, # Add them in to collected files
           gooey_images, # Same here.
-          name='ITE and Basic Missed Topics',
+          name='ite-basic-missed-topics',
           debug=False,
           strip=None,
           upx=True,
