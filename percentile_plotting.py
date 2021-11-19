@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+from gooey import Gooey, GooeyParser
+from dataclasses import dataclass
+import pdftotext
 import matplotlib.pyplot as plt
 
-from dataclasses import dataclass
+from strip_header import strip_header
 
 from random import shuffle
-import sys
+import os, sys
 
 
 @dataclass
@@ -38,6 +41,9 @@ class Trainee:
             else:
                 scores[word] = 0
 
+        if id_number is None or len(scores) == 0:
+            raise ValueError
+
         return cls(last_name, " ".join(first_name_pieces), id_number, scores)
 
     def parse_scores(self, row):
@@ -47,10 +53,31 @@ class Trainee:
 
 
 def main():
-    years, trainees = parse_scores(sys.stdin)
+    parser = GooeyParser(
+        description="Create training level bar charts from ITE Improvement in Performance report"
+    )
+    required_group = parser.add_argument_group("Required inputs")
+    required_group.add_argument(
+        "scores",
+        help="Path to ITE Improvement in Performance PDF",
+        widget="FileChooser",
+    )
+    required_group.add_argument(
+        "norm_file",
+        help="Path to ITE Guideline Norm Table Scaled Scores PDF",
+        widget="FileChooser",
+    )
 
-    with open(3, "r") as norm_table_file:
-        norm_table = parse_norm_table(norm_table_file)
+    args = parser.parse_args()
+
+    with open(args.scores, "rb") as scores_file:
+        raw = "".join(pdftotext.PDF(scores_file, raw=True))
+        stripped = "\n".join(strip_header(raw.splitlines()))
+        years, trainees = parse_scores(stripped)
+
+    with open(args.norm_file, "rb") as norm_table_file:
+        raw = "".join(pdftotext.PDF(norm_table_file, raw=True))
+        norm_table = parse_norm_table(raw)
 
     for i, year in enumerate(years):
         plot_year(year, trainees, i, norm_table)
@@ -107,9 +134,10 @@ def parse_scores(pdf_text):
     years = None
 
     trainees = []
+    trainee_lines = []
     trainee = None
 
-    for line in pdf_text:
+    for line in pdf_text.splitlines():
         line = line.strip()
         if len(line) == 0:
             continue
@@ -120,10 +148,17 @@ def parse_scores(pdf_text):
             continue
 
         if trainee is None:
-            trainee = Trainee.from_row(line)
+            trainee_lines.append(line)
+
+            try:
+                trainee = Trainee.from_row(" ".join(trainee_lines))
+            except Exception as e:
+                print(e, file=sys.stderr)
+                pass
         else:
             trainee.parse_scores(line)
             trainees.append(trainee)
+            trainee_lines = []
             trainee = None
 
     return years, trainees
@@ -142,10 +177,18 @@ def parse_norm_table(norm_table_text):
     year_names = []
     years = []
 
+    in_header = True
     last_row = False
 
-    for line in norm_table_text:
+    for line in norm_table_text.splitlines():
         line = line.strip()
+
+        if in_header:
+            if line == "New":
+                in_header = False
+            else:
+                continue
+
         if line.startswith("("):
             continue
 
@@ -177,4 +220,7 @@ def parse_norm_table(norm_table_text):
 
 
 if __name__ == "__main__":
+    if not os.getenv("GUI_DISABLE"):
+        main = Gooey(main, show_stop_warning=False)
+
     main()
