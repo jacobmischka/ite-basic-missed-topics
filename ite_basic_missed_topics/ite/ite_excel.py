@@ -62,7 +62,7 @@ def write_xlsx_legend(worksheet):
     worksheet[DEFICIENT_DIFFERENCE_COL].offset(column=-2).value = "Deficient if"
     worksheet[DEFICIENT_DIFFERENCE_COL].offset(
         column=-1
-    ).value = "National mean difference greater than"
+    ).value = "National mean difference worse than"
     worksheet[DEFICIENT_DIFFERENCE_COL].value = DEFICIENT_DIFFERENCE
 
     worksheet[DEFICIENT_DIFFERENCE_MISSED_COL].offset(column=-3).value = "AND"

@@ -33,7 +33,7 @@ coloring and the marks in the Deficient columns.
 
 If you expand the columns a bit, it shows that one is marked deficient if either:
 
-1. the difference from the national mean is greater than 15% and the % missed is greater than 0%
+1. the difference from the national mean is worse than -15% and the % missed is greater than 0%
 2. the % missed is 100%
 
 ![Deficient legend](static/deficient.png)

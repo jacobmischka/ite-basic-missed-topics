@@ -317,7 +317,7 @@ class IteItem(object):
         worksheet.cell(
             row=row,
             column=self.CBY_DEFICIENT_COL,
-            value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+            value='=IF(OR(AND({}{} <= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
                 get_column_letter(self.CBY_DIFF_COL),
                 row,
                 DEFICIENT_DIFFERENCE_COL,
@@ -332,7 +332,7 @@ class IteItem(object):
         worksheet.cell(
             row=row,
             column=self.CA1_DEFICIENT_COL,
-            value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+            value='=IF(OR(AND({}{} <= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
                 get_column_letter(self.CA1_DIFF_COL),
                 row,
                 DEFICIENT_DIFFERENCE_COL,
@@ -347,7 +347,7 @@ class IteItem(object):
         worksheet.cell(
             row=row,
             column=self.CA2_DEFICIENT_COL,
-            value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+            value='=IF(OR(AND({}{} <= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
                 get_column_letter(self.CA2_DIFF_COL),
                 row,
                 DEFICIENT_DIFFERENCE_COL,
@@ -362,7 +362,7 @@ class IteItem(object):
         worksheet.cell(
             row=row,
             column=self.CA3_DEFICIENT_COL,
-            value='=IF(OR(AND({}{} >= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
+            value='=IF(OR(AND({}{} <= {}, {}{} >= {}), {}{} >= {}), "YES", "")'.format(
                 get_column_letter(self.CA3_DIFF_COL),
                 row,
                 DEFICIENT_DIFFERENCE_COL,
